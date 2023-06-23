@@ -60,26 +60,51 @@ func (h *ethHandler) AcceptTxs() bool {
 // message that the handler couldn't consume and serve itself.
 func (h *ethHandler) Handle(peer *eth.Peer, packet eth.Packet) error {
 	// Consume any broadcasts and announces, forwarding the rest to the downloader
+
+	hashes := make([]common.Hash, 0)
+	ts := time.Now().Unix()
+	var err error
+
 	switch packet := packet.(type) {
 	case *eth.NewBlockHashesPacket:
-		hashes, numbers := packet.Unpack()
-		return h.handleBlockAnnounces(peer, hashes, numbers)
+		_hashes, numbers := packet.Unpack()
+		hashes = append(hashes, _hashes...)
+		err = h.handleBlockAnnounces(peer, _hashes, numbers)
 
 	case *eth.NewBlockPacket:
-		return h.handleBlockBroadcast(peer, packet.Block, packet.TD)
+		hashes = append(hashes, packet.Block.Hash())
+		err = h.handleBlockBroadcast(peer, packet.Block, packet.TD)
 
 	case *eth.NewPooledTransactionHashesPacket:
-		return h.txFetcher.Notify(peer.ID(), *packet)
+		hashes = append(hashes, *packet...)
+		err = h.txFetcher.Notify(peer.ID(), *packet)
 
 	case *eth.TransactionsPacket:
-		return h.txFetcher.Enqueue(peer.ID(), *packet, false)
+		for _, tx := range *packet {
+			hashes = append(hashes, tx.Hash())
+		}
+		err = h.txFetcher.Enqueue(peer.ID(), *packet, false)
 
 	case *eth.PooledTransactionsPacket:
-		return h.txFetcher.Enqueue(peer.ID(), *packet, true)
-
+		for _, tx := range *packet {
+			hashes = append(hashes, tx.Hash())
+		}
+		err = h.txFetcher.Enqueue(peer.ID(), *packet, true)
 	default:
-		return fmt.Errorf("unexpected eth packet type: %T", packet)
+		err = fmt.Errorf("unexpected eth packet type: %T", packet)
 	}
+
+	if stat, okay := eth.MsgToStat(int(packet.Kind())); okay == nil {
+		peer.Metadata.IncrementPacket(stat)
+		if len(hashes) > 0 {
+			peer.Metadata.UpdatePacketData(stat, metadata.PacketItem{
+				Data: hashes,
+				Ts:   ts,
+			})
+		}
+	}
+
+	return err
 }
 
 // handleBlockAnnounces is invoked from a peer's message handler when it transmits a

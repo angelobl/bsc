@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/p2p"
+	"github.com/ethereum/go-ethereum/p2p/metadata"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -94,11 +95,12 @@ type Peer struct {
 	term   chan struct{} // Termination channel to stop the broadcasters
 	txTerm chan struct{} // Termination channel to stop the tx broadcasters
 	lock   sync.RWMutex  // Mutex protecting the internal fields
+	Metadata metadata.IMetadata
 }
 
 // NewPeer create a wrapper for a network connection and negotiated  protocol
 // version.
-func NewPeer(version uint, p *p2p.Peer, rw p2p.MsgReadWriter, txpool TxPool) *Peer {
+func NewPeer(version uint, p *p2p.Peer, rw p2p.MsgReadWriter, txpool TxPool, cacheSize uint64) *Peer {
 	peer := &Peer{
 		id:              p.ID().String(),
 		Peer:            p,
@@ -116,6 +118,7 @@ func NewPeer(version uint, p *p2p.Peer, rw p2p.MsgReadWriter, txpool TxPool) *Pe
 		txpool:          txpool,
 		term:            make(chan struct{}),
 		txTerm:          make(chan struct{}),
+		Metadata:        NewEthMetadata(cacheSize),
 	}
 	// Start up all the broadcasters
 	go peer.broadcastBlocks()

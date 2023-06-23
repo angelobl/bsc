@@ -22,7 +22,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/eth/protocols/bsc"
 	"github.com/ethereum/go-ethereum/eth/protocols/trust"
-
+	"github.com/ethereum/go-ethereum/p2p/metadata"
 	"github.com/ethereum/go-ethereum/eth/protocols/diff"
 	"github.com/ethereum/go-ethereum/eth/protocols/eth"
 	"github.com/ethereum/go-ethereum/eth/protocols/snap"
@@ -34,6 +34,7 @@ type ethPeerInfo struct {
 	Version    uint     `json:"version"`    // Ethereum protocol version negotiated
 	Difficulty *big.Int `json:"difficulty"` // Total difficulty of the peer's blockchain
 	Head       string   `json:"head"`       // Hex hash of the peer's best owned block
+	Metadata   metadata.IMetadata `json:"metadata"`
 }
 
 // ethPeer is a wrapper around eth.Peer to maintain a few extra metadata.
@@ -46,6 +47,7 @@ type ethPeer struct {
 
 	syncDrop *time.Timer   // Connection dropper if `eth` sync progress isn't validated in time
 	snapWait chan struct{} // Notification channel for snap connections
+	meta     *metadata.Metadata
 }
 
 // info gathers and returns some `eth` protocol metadata known about a peer.
@@ -56,6 +58,7 @@ func (p *ethPeer) info() *ethPeerInfo {
 		Version:    p.Version(),
 		Difficulty: td,
 		Head:       hash.Hex(),
+		Metadata:   p.Metadata,
 	}
 }
 
