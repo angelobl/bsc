@@ -695,6 +695,10 @@ var (
 		Name:  "rpc.allow-unprotected-txs",
 		Usage: "Allow for unprotected (non EIP155 signed) transactions to be submitted via RPC",
 	}
+	MetadataCacheSizeFlag = cli.Uint64Flag{
+		Name:  "metadata.cache.size",
+		Usage: "Defines the maximum amount of storage size for packet metadata, default 10",
+	}
 
 	// Network Settings
 	MaxPeersFlag = cli.IntFlag{
